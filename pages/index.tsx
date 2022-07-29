@@ -13,9 +13,10 @@ const Home: NextPage<HomePageProps> = ({ orders }) => {
   console.log(stateOrders);
 
   const foo = () => {
+    const randomId = String(Math.floor(Math.random() * 100));
     const newOrder: Order = {
-      id: '213',
-      name: '123',
+      id: randomId,
+      name: randomId,
       isTest: false,
       customerName: 'Bar',
       price: 30,
@@ -108,7 +109,7 @@ async function getOrderData(): Promise<Array<Order>> {
   );
   const responseData: OrderResponse = await client.query({
     data: `{
-      orders(first: 30, query: "financial_status:AUTHORIZED") {
+      orders(first: 30, reverse: true) {
         edges {
           node {
             id
