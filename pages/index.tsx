@@ -1,7 +1,10 @@
 import type { NextPage } from 'next';
 import Head from 'next/head';
 import Shopify from '@shopify/shopify-api';
-import React from 'react';
+import React, { useEffect } from 'react';
+import io from 'socket.io-client';
+
+let socket;
 
 type HomePageProps = {
   orders: Array<Order>
@@ -10,9 +13,7 @@ type HomePageProps = {
 const Home: NextPage<HomePageProps> = ({ orders }) => {
   const [stateOrders, setStateOrders] = React.useState(orders);
 
-  console.log(stateOrders);
-
-  const foo = () => {
+  const addMockOrder = () => {
     const randomId = String(Math.floor(Math.random() * 100));
     const newOrder: Order = {
       id: randomId,
@@ -23,10 +24,42 @@ const Home: NextPage<HomePageProps> = ({ orders }) => {
       processedAt: '123213',
       financialStatus: '132'
     };
-    setStateOrders([newOrder, ...stateOrders]);
-
-    console.log(stateOrders);
+    
+    addOrder(newOrder);
   }
+
+  const addOrder = (order) => {
+    console.log(order);
+
+    setStateOrders([order, ...stateOrders]);
+  }
+
+  const socketInitializer = async () => {
+    await fetch('/api/webhook');
+    socket = io();
+
+    socket.on('connect', () => {
+      console.log('connected');
+    })
+
+    socket.on('order-created', order => {
+      console.log('order created');
+
+      const newOrder: Order = {
+        id: order.id,
+        name: order.name,
+        isTest: order.test,
+        customerName: `${order.customer.first_name} ${order.customer.last_name}`,
+        price: Number(order.total_price),
+        processedAt: order.processed_at,
+        financialStatus: order.financial_status
+      }
+
+      addOrder(newOrder);
+    })
+  }
+
+  useEffect(() => {socketInitializer()}, []);
 
   return (
       <div>
@@ -37,7 +70,7 @@ const Home: NextPage<HomePageProps> = ({ orders }) => {
 
         <button
           className="button"
-          onClick={() => foo()}  
+          onClick={() => addMockOrder()}  
         >Button</button>
 
         <div className="container">
