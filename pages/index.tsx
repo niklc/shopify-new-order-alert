@@ -1,53 +1,29 @@
 import type { NextPage } from 'next';
-import Head from 'next/head';
 import Shopify from '@shopify/shopify-api';
 import React, { useEffect } from 'react';
 import io from 'socket.io-client';
-
-let socket;
 
 type HomePageProps = {
   orders: Array<Order>
 }
 
+function getRandomId() {
+  return String(Math.floor(Math.random() * 10000));
+}
+
 const Home: NextPage<HomePageProps> = ({ orders }) => {
-  const [stateOrders, setStateOrders] = React.useState(orders);
-
-  const addMockOrder = () => {
-    const randomId = String(Math.floor(Math.random() * 100));
-    const newOrder: Order = {
-      id: randomId,
-      name: randomId,
-      isTest: false,
-      customerName: 'Bar',
-      price: 30,
-      processedAt: '123213',
-      financialStatus: '132'
-    };
-    
-    addOrder(newOrder);
-  }
-
-  const addOrder = (order) => {
-    console.log(order);
-
-    setStateOrders([order, ...stateOrders]);
-  }
+  const [ordersState, setOrdersState] = React.useState(orders);
 
   const socketInitializer = async () => {
     await fetch('/api/webhook');
-    socket = io();
 
-    socket.on('connect', () => {
-      console.log('connected');
-    })
+    const socket = io();
 
-    socket.on('order-created', order => {
-      console.log('order created');
-
+    socket.on('order-created', (order) => {
+      const randomId = getRandomId();
       const newOrder: Order = {
-        id: order.id,
-        name: order.name,
+        id: randomId,
+        name: randomId,
         isTest: order.test,
         customerName: `${order.customer.first_name} ${order.customer.last_name}`,
         price: Number(order.total_price),
@@ -55,7 +31,7 @@ const Home: NextPage<HomePageProps> = ({ orders }) => {
         financialStatus: order.financial_status
       }
 
-      addOrder(newOrder);
+      setOrdersState((currentOrdersState) => [newOrder, ...currentOrdersState]);
     })
   }
 
@@ -64,19 +40,10 @@ const Home: NextPage<HomePageProps> = ({ orders }) => {
   return (
       <div>
 
-        <Head>
-          <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css" />
-        </Head>
-
-        <button
-          className="button"
-          onClick={() => addMockOrder()}  
-        >Button</button>
-
         <div className="container">
 
           <div className="columns is-multiline mt-3">
-            {stateOrders.map((order) => (
+            {ordersState.map((order) => (
               <div
                 key={order.id}
                 className="column is-full"
