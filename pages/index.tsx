@@ -1,7 +1,7 @@
 import type { NextPage } from 'next';
 import Shopify from '@shopify/shopify-api';
 import React, { useEffect } from 'react';
-import io from 'socket.io-client';
+import Pusher from 'pusher-js';
 
 type HomePageProps = {
   orders: Array<Order>
@@ -15,24 +15,21 @@ const Home: NextPage<HomePageProps> = ({ orders }) => {
   const [ordersState, setOrdersState] = React.useState(orders);
 
   const socketInitializer = async () => {
-    await fetch('/api/webhook');
+    const pusher = new Pusher(
+      process.env.NEXT_PUBLIC_PUSHER_APP_KEY as string,
+      { cluster: process.env.NEXT_PUBLIC_PUSHER_APP_CLUSTER }
+    );
 
-    const socket = io();
-
-    socket.on('order-created', (order) => {
+    const channel = pusher.subscribe('default');
+    channel.bind('order-created', function(order: Order) {
       const randomId = getRandomId();
-      const newOrder: Order = {
-        id: randomId,
-        name: randomId,
-        isTest: order.test,
-        customerName: `${order.customer.first_name} ${order.customer.last_name}`,
-        price: Number(order.total_price),
-        processedAt: order.processed_at,
-        financialStatus: order.financial_status
-      }
+
+      const newOrder = order;
+      newOrder.id = randomId;
+      newOrder.name = randomId;
 
       setOrdersState((currentOrdersState) => [newOrder, ...currentOrdersState]);
-    })
+    });
   }
 
   useEffect(() => {socketInitializer()}, []);
