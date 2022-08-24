@@ -29,13 +29,23 @@ const Home: NextPage<HomePageProps> = ({ orders }) => {
       newOrder.name = randomId;
 
       setOrdersState((currentOrdersState) => [newOrder, ...currentOrdersState]);
+
+      ringBell();
     });
   }
 
+  function ringBell() {
+    const audio = document.getElementById('bell') as HTMLMediaElement;
+
+    audio.play();
+  }
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {socketInitializer()}, []);
 
   return (
       <div>
+        <audio id='bell' src='/bronze-bell.mp3'></audio>
 
         <div className="container">
 
