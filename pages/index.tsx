@@ -1,9 +1,9 @@
-import type { NextPage } from 'next';
+import type { GetServerSideProps, NextPage } from 'next';
 import Shopify from '@shopify/shopify-api';
 import React, { useEffect } from 'react';
 import Pusher from 'pusher-js';
 
-type HomePageProps = {
+type DashboardPageProps = {
   orders: Array<Order>
 }
 
@@ -11,7 +11,7 @@ function getRandomId() {
   return String(Math.floor(Math.random() * 10000));
 }
 
-const Home: NextPage<HomePageProps> = ({ orders }) => {
+const DashboardPage: NextPage<DashboardPageProps> = ({ orders }) => {
   const [ordersState, setOrdersState] = React.useState(orders);
 
   const socketInitializer = async () => {
@@ -44,32 +44,35 @@ const Home: NextPage<HomePageProps> = ({ orders }) => {
   useEffect(() => {socketInitializer()}, []);
 
   return (
-      <div>
-        <audio id='bell' src='/bronze-bell.mp3'></audio>
+    <div>
+      <audio
+        id='bell'
+        src='/bronze-bell.mp3'
+      />
 
-        <div className="container">
+      <div className="container">
 
-          <div className="columns is-multiline mt-3">
-            {ordersState.map((order) => (
-              <div
-                key={order.id}
-                className="column is-full"
-              >
-                <div className="box">
-                  <div className="columns has-text-centered">
-                    <div className="column">{order.name}</div>
-                    <div className="column">{order.customerName}</div>
-                    <div className="column">{order.price}</div>
-                    <div className="column">{order.processedAt}</div>
-                  </div>
+        <div className="columns is-multiline mt-3">
+          {ordersState.map((order) => (
+            <div
+              key={order.id}
+              className="column is-full"
+            >
+              <div className="box">
+                <div className="columns has-text-centered">
+                  <div className="column">{order.name}</div>
+                  <div className="column">{order.customerName}</div>
+                  <div className="column">{order.price}</div>
+                  <div className="column">{order.processedAt}</div>
                 </div>
               </div>
-            ))}
-          </div>
-
+            </div>
+          ))}
         </div>
 
       </div>
+
+    </div>
   )
 }
 
@@ -155,10 +158,20 @@ async function getOrderData(): Promise<Array<Order>> {
   return orders;
 }
 
-export async function getServerSideProps() {
+export const getServerSideProps: GetServerSideProps = async (context) => {
+  const authHeader = context.req.cookies['key'];
+  if (typeof authHeader == 'undefined' || authHeader !== process.env.AUTH_KEY) {
+    return {
+      redirect: {
+        destination: '/login',
+        permanent: false,
+      },
+    }
+  }
+
   const orders = await getOrderData();
 
   return { props: { orders } }
 }
 
-export default Home
+export default DashboardPage;
