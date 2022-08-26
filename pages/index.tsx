@@ -3,12 +3,20 @@ import Shopify from '@shopify/shopify-api';
 import React, { useEffect } from 'react';
 import Pusher from 'pusher-js';
 
+const ORDER_LIMIT = 15;
+
 type DashboardPageProps = {
-  orders: Array<Order>
+  orders: Order[]
 }
 
 function getRandomId() {
   return String(Math.floor(Math.random() * 10000));
+}
+
+function limitOrderCount(orders: Order[]) {
+  return orders.length > ORDER_LIMIT
+    ? orders.slice(0, ORDER_LIMIT)
+    : orders;
 }
 
 const DashboardPage: NextPage<DashboardPageProps> = ({ orders }) => {
@@ -28,7 +36,7 @@ const DashboardPage: NextPage<DashboardPageProps> = ({ orders }) => {
       newOrder.id = randomId;
       newOrder.name = randomId;
 
-      setOrdersState((currentOrdersState) => [newOrder, ...currentOrdersState]);
+      setOrdersState((currentOrdersState) => limitOrderCount([newOrder, ...currentOrdersState]));
 
       ringBell();
     });
@@ -51,7 +59,6 @@ const DashboardPage: NextPage<DashboardPageProps> = ({ orders }) => {
       />
 
       <div className="container">
-
         <div className="columns is-multiline mt-3">
           {ordersState.map((order) => (
             <div
@@ -59,7 +66,7 @@ const DashboardPage: NextPage<DashboardPageProps> = ({ orders }) => {
               className="column is-full"
             >
               <div className="box">
-                <div className="columns has-text-centered">
+                <div className="columns is-mobile has-text-centered">
                   <div className="column">{order.name}</div>
                   <div className="column">{order.customerName}</div>
                   <div className="column">{order.price}</div>
@@ -69,9 +76,13 @@ const DashboardPage: NextPage<DashboardPageProps> = ({ orders }) => {
             </div>
           ))}
         </div>
-
       </div>
 
+      <style jsx global>{`
+        html {
+            overflow: hidden;
+        }
+      `}</style>
     </div>
   )
 }
@@ -119,7 +130,7 @@ async function getOrderData(): Promise<Array<Order>> {
   );
   const responseData: OrderResponse = await client.query({
     data: `{
-      orders(first: 30, reverse: true) {
+      orders(first: ${ORDER_LIMIT}, reverse: true) {
         edges {
           node {
             id
