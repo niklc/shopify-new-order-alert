@@ -2,6 +2,7 @@ import type { GetServerSideProps, NextPage } from 'next';
 import Shopify from '@shopify/shopify-api';
 import React, { useEffect } from 'react';
 import Pusher from 'pusher-js';
+import moment from 'moment';
 
 const ORDER_LIMIT = 15;
 
@@ -17,6 +18,31 @@ function limitOrderCount(orders: Order[]) {
   return orders.length > ORDER_LIMIT
     ? orders.slice(0, ORDER_LIMIT)
     : orders;
+}
+
+function formatDate(date: string) {
+  return moment(date).fromNow();
+}
+
+function getColorCodeFromDate(date: string) {
+  const dateLastWeek = moment().subtract(1, 'weeks');
+  const dateNow = moment();
+  const minutesSinceLastWeek = dateNow.diff(dateLastWeek, 'minutes');
+  const minutesOrder = dateNow.diff(moment(date), 'minutes');
+
+  const orderPercentElapsedSinceWeek = minutesOrder / minutesSinceLastWeek;
+
+  const elapsedSinceNowInWeek = orderPercentElapsedSinceWeek < 1
+    ? Math.abs(orderPercentElapsedSinceWeek - 1) 
+    : 0;
+
+  const valueMinimum = 99;
+  const valueMaximum = 85;
+  const valueRange = valueMaximum - valueMinimum;
+
+  const appliedValueRange = valueRange * elapsedSinceNowInWeek;
+
+  return valueMinimum + appliedValueRange;
 }
 
 const DashboardPage: NextPage<DashboardPageProps> = ({ orders }) => {
@@ -42,14 +68,24 @@ const DashboardPage: NextPage<DashboardPageProps> = ({ orders }) => {
     });
   }
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {socketInitializer()}, []);
+
   function ringBell() {
     const audio = document.getElementById('bell') as HTMLMediaElement;
 
     audio.play();
   }
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => {socketInitializer()}, []);
+  const [time, setTime] = React.useState(Date.now());
+
+  useEffect(() => {
+    const interval = setInterval(() => setTime(Date.now()), 1000);
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, []);
 
   return (
     <div>
@@ -65,12 +101,12 @@ const DashboardPage: NextPage<DashboardPageProps> = ({ orders }) => {
               key={order.id}
               className="column is-full"
             >
-              <div className="box">
+              <div className="box" style={{backgroundColor: `hsl(75, 85%, ${getColorCodeFromDate(order.processedAt)}%)`}}>
                 <div className="columns is-mobile has-text-centered">
                   <div className="column">{order.name}</div>
                   <div className="column">{order.customerName}</div>
                   <div className="column">{order.price}</div>
-                  <div className="column">{order.processedAt}</div>
+                  <div className="column">{formatDate(order.processedAt)}</div>
                 </div>
               </div>
             </div>
