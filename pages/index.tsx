@@ -1,10 +1,21 @@
 import type { GetServerSideProps, NextPage } from 'next';
 import Shopify from '@shopify/shopify-api';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import Pusher from 'pusher-js';
 import moment from 'moment';
+import { animated, useSpring } from '@react-spring/web'
 
 const ORDER_LIMIT = 15;
+
+type Order = {
+  id: string,
+  name: string,
+  isTest: boolean,
+  customerName: string,
+  price: number,
+  processedAt: string,
+  financialStatus: string
+}
 
 type DashboardPageProps = {
   orders: Order[]
@@ -18,10 +29,6 @@ function limitOrderCount(orders: Order[]) {
   return orders.length > ORDER_LIMIT
     ? orders.slice(0, ORDER_LIMIT)
     : orders;
-}
-
-function formatDate(date: string) {
-  return moment(date).fromNow();
 }
 
 function getColorCodeFromDate(date: string) {
@@ -45,8 +52,35 @@ function getColorCodeFromDate(date: string) {
   return valueMinimum + appliedValueRange;
 }
 
+function formatDate(date: string) {
+  return moment(date).fromNow();
+}
+
+const Card = ({order, isAnimated}: {order: Order, isAnimated: boolean}) => {
+  const props = useSpring({
+    from: { marginTop: isAnimated ? -90 : 0 },
+    to: { marginTop: 0 },
+  });
+
+  return <animated.div
+    key={order.id}
+    className="column is-full"
+    style={props}
+  >
+    <div className="box" style={{backgroundColor: `hsl(75, 85%, ${getColorCodeFromDate(order.processedAt)}%)`}}>
+      <div className="columns is-mobile has-text-centered">
+        <div className="column">{order.name}</div>
+        <div className="column">{order.customerName}</div>
+        <div className="column">{order.price}</div>
+        <div className="column">{formatDate(order.processedAt)}</div>
+      </div>
+    </div>
+  </animated.div>
+};
+
 const DashboardPage: NextPage<DashboardPageProps> = ({ orders }) => {
   const [ordersState, setOrdersState] = React.useState(orders);
+  const [runtimeOrderIds, setRuntimeOrderIds] = React.useState<string[]>([]);
 
   const socketInitializer = async () => {
     const pusher = new Pusher(
@@ -63,6 +97,7 @@ const DashboardPage: NextPage<DashboardPageProps> = ({ orders }) => {
       newOrder.name = randomId;
 
       setOrdersState((currentOrdersState) => limitOrderCount([newOrder, ...currentOrdersState]));
+      setRuntimeOrderIds((currentIds) => [newOrder.id, ...currentIds]);
 
       ringBell();
     });
@@ -97,19 +132,7 @@ const DashboardPage: NextPage<DashboardPageProps> = ({ orders }) => {
       <div className="container">
         <div className="columns is-multiline mt-3">
           {ordersState.map((order) => (
-            <div
-              key={order.id}
-              className="column is-full"
-            >
-              <div className="box" style={{backgroundColor: `hsl(75, 85%, ${getColorCodeFromDate(order.processedAt)}%)`}}>
-                <div className="columns is-mobile has-text-centered">
-                  <div className="column">{order.name}</div>
-                  <div className="column">{order.customerName}</div>
-                  <div className="column">{order.price}</div>
-                  <div className="column">{formatDate(order.processedAt)}</div>
-                </div>
-              </div>
-            </div>
+            <Card key={order.id} order={order} isAnimated={runtimeOrderIds.includes(order.id)} />
           ))}
         </div>
       </div>
@@ -147,16 +170,6 @@ type OrderResponse = {
       ]
     }
   }
-}
-
-type Order = {
-  id: string,
-  name: string,
-  isTest: boolean,
-  customerName: string,
-  price: number,
-  processedAt: string,
-  financialStatus: string
 }
 
 async function getOrderData(): Promise<Array<Order>> {
@@ -218,7 +231,7 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
 
   const orders = await getOrderData();
 
-  return { props: { orders } }
+  return { props: { orders } };
 }
 
 export default DashboardPage;
