@@ -1,6 +1,6 @@
 import type { GetServerSideProps, NextPage } from 'next';
 import Shopify from '@shopify/shopify-api';
-import React, { useEffect, useState } from 'react';
+import React, { CSSProperties, useEffect } from 'react';
 import Pusher from 'pusher-js';
 import moment from 'moment';
 import { animated, useSpring } from '@react-spring/web'
@@ -71,16 +71,30 @@ const Card = ({order, isAnimated}: {order: Order, isAnimated: boolean}) => {
       <div className="columns is-mobile has-text-centered">
         <div className="column">{order.name}</div>
         <div className="column">{order.customerName}</div>
-        <div className="column">{order.price}</div>
+        <div className="column">{order.price.toFixed(2)}</div>
         <div className="column">{formatDate(order.processedAt)}</div>
       </div>
     </div>
   </animated.div>
 };
 
+function getButtonStyle(isMuted: boolean): CSSProperties {
+  return {
+    borderRadius: "100%",
+    minWidth: "60px",
+    minHeight: "60px",
+    position: "fixed",
+    bottom: "30px",
+    right: "30px",
+    backgroundColor: isMuted ? 'hsl(0, 80%, 75%)' : 'unset',
+    transition: 'background-color .3s ease'
+  }
+}
+
 const DashboardPage: NextPage<DashboardPageProps> = ({ orders }) => {
   const [ordersState, setOrdersState] = React.useState(orders);
   const [runtimeOrderIds, setRuntimeOrderIds] = React.useState<string[]>([]);
+  const [isMuted, setIsMuted] = React.useState(true);
 
   const socketInitializer = async () => {
     const pusher = new Pusher(
@@ -126,13 +140,32 @@ const DashboardPage: NextPage<DashboardPageProps> = ({ orders }) => {
     <div>
       <audio
         id='bell'
-        src='/bronze-bell.mp3'
+        src='/bell.mp3'
+        muted={isMuted}
       />
+      <button
+        className="button is-rounded"
+        style={getButtonStyle(isMuted)}
+        onClick={() => setIsMuted(!isMuted)}
+      >
+        {// eslint-disable-next-line @next/next/no-img-element
+        }<img
+          src={isMuted ? '/volume-mute.svg' : '/volume-high.svg'}
+          width="30px"
+          height="30px"
+          style={{position: "absolute"}}
+          alt=""
+        />
+      </button>
 
       <div className="container">
-        <div className="columns is-multiline mt-3">
+        <div className="columns is-multiline mt-3 mx-3">
           {ordersState.map((order) => (
-            <Card key={order.id} order={order} isAnimated={runtimeOrderIds.includes(order.id)} />
+            <Card
+              key={order.id}
+              order={order}
+              isAnimated={runtimeOrderIds.includes(order.id)}
+            />
           ))}
         </div>
       </div>
