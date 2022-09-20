@@ -3,7 +3,7 @@ import Shopify from '@shopify/shopify-api';
 import React, { CSSProperties, useEffect } from 'react';
 import Pusher from 'pusher-js';
 import moment from 'moment';
-import { animated, useSpring } from '@react-spring/web'
+import { animated, useSpring, config } from '@react-spring/web'
 
 const ORDER_LIMIT = 15;
 
@@ -80,14 +80,19 @@ const Card = ({order, isAnimated}: {order: Order, isAnimated: boolean}) => {
 
 function getButtonStyle(isMuted: boolean): CSSProperties {
   return {
-    borderRadius: "100%",
-    minWidth: "60px",
-    minHeight: "60px",
-    position: "fixed",
-    bottom: "30px",
-    right: "30px",
-    backgroundColor: isMuted ? 'hsl(0, 80%, 75%)' : 'unset',
-    transition: 'background-color .3s ease'
+    borderRadius: '100%',
+    minWidth: '60px',
+    minHeight: '60px',
+    position: 'fixed',
+    bottom: '45px',
+    right: '45px',
+    zIndex: 1,
+    border: '1px solid black',
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    cursor: 'pointer',
+    '-webkit-tap-highlight-color': 'transparent'
   }
 }
 
@@ -95,6 +100,8 @@ const DashboardPage: NextPage<DashboardPageProps> = ({ orders }) => {
   const [ordersState, setOrdersState] = React.useState(orders);
   const [runtimeOrderIds, setRuntimeOrderIds] = React.useState<string[]>([]);
   const [isMuted, setIsMuted] = React.useState(true);
+  const [muteScale, setMuteScale] = React.useState(0);
+  const [isMuteHover, setIsMuteHover] = React.useState(false);
 
   const socketInitializer = async () => {
     const pusher = new Pusher(
@@ -136,6 +143,12 @@ const DashboardPage: NextPage<DashboardPageProps> = ({ orders }) => {
     };
   }, []);
 
+  const propFoo = useSpring({
+    transform: `scale(1.${muteScale})`,
+    backgroundColor: isMuted ? 'hsl(0, 100%, 75%)' : 'hsl(0, 0%, 100%)',
+    config: config.wobbly
+  });
+
   return (
     <div>
       <audio
@@ -143,20 +156,25 @@ const DashboardPage: NextPage<DashboardPageProps> = ({ orders }) => {
         src='/bell.mp3'
         muted={isMuted}
       />
-      <button
-        className="button is-rounded"
-        style={getButtonStyle(isMuted)}
+      <animated.button
+        style={{...getButtonStyle(isMuted), ...propFoo}}
         onClick={() => setIsMuted(!isMuted)}
+        onMouseEnter={() => {setMuteScale(1); setIsMuteHover(true);}}
+        onMouseLeave={() => {setMuteScale(0); setIsMuteHover(false);}}
+        onMouseDown={() => setMuteScale(3)}
+        onMouseUp={() => setMuteScale(isMuteHover ? 1 : 0)}
+        onTouchEnd={() => setMuteScale(0)}
+        onTouchStart={() => setMuteScale(3)}
       >
         {// eslint-disable-next-line @next/next/no-img-element
         }<img
           src={isMuted ? '/volume-mute.svg' : '/volume-high.svg'}
           width="30px"
           height="30px"
-          style={{position: "absolute"}}
+          style={{position: 'absolute', pointerEvents: 'none', userSelect: 'none'}}
           alt=""
         />
-      </button>
+      </animated.button>
 
       <div className="container">
         <div className="columns is-multiline mt-3 mx-3">
