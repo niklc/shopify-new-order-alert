@@ -21,10 +21,6 @@ type DashboardPageProps = {
   orders: Order[]
 }
 
-function getRandomId() {
-  return String(Math.floor(Math.random() * 10000));
-}
-
 function limitOrderCount(orders: Order[]) {
   return orders.length > ORDER_LIMIT
     ? orders.slice(0, ORDER_LIMIT)
@@ -123,16 +119,10 @@ const DashboardPage: NextPage<DashboardPageProps> = ({ orders }) => {
 
     const channel = pusher.subscribe('default');
     channel.bind('order-created', function(order: Order) {
-      const randomId = getRandomId();
+      setOrdersState((currentOrdersState) => limitOrderCount([order, ...currentOrdersState]));
+      setRuntimeOrderIds((currentIds) => [order.id, ...currentIds]);
 
-      const newOrder = order;
-      newOrder.id = randomId;
-      newOrder.name = randomId;
-
-      setOrdersState((currentOrdersState) => limitOrderCount([newOrder, ...currentOrdersState]));
-      setRuntimeOrderIds((currentIds) => [newOrder.id, ...currentIds]);
-
-      if(!newOrder.isTest) {
+      if(!order.isTest) {
         ringBell();
       }
     });
@@ -257,6 +247,8 @@ async function getOrderData(): Promise<Array<Order>> {
     }`,
   })
   .then((data) => data.body) as OrderResponse;
+
+  console.log(responseData)
 
   const orders = responseData.data.orders.edges.map((edge: any) => {
     const node = edge.node;
