@@ -57,7 +57,7 @@ function formatDate(date: string) {
 }
 
 const Card = ({order, isAnimated}: {order: Order, isAnimated: boolean}) => {
-  const props = useSpring({
+  const propsCardSpring = useSpring({
     from: { marginTop: isAnimated ? -90 : 0 },
     to: { marginTop: 0 },
   });
@@ -65,20 +65,25 @@ const Card = ({order, isAnimated}: {order: Order, isAnimated: boolean}) => {
   return <animated.div
     key={order.id}
     className="column is-full"
-    style={props}
+    style={propsCardSpring}
   >
-    <div className="box" style={{backgroundColor: `hsl(75, 85%, ${getColorCodeFromDate(order.processedAt)}%)`}}>
-      <div className="columns is-mobile has-text-centered">
-        <div className="column">{order.name}</div>
-        <div className="column">{order.customerName}</div>
-        <div className="column">{order.price.toFixed(2)}</div>
-        <div className="column">{formatDate(order.processedAt)}</div>
+    <div
+      className="box" 
+      style={{
+        backgroundColor: `hsl(75, 85%, ${getColorCodeFromDate(order.processedAt)}%)`,
+        filter: order.isTest ? 'grayscale(1)' : ''
+      }}>
+      <div className="columns is-mobile is-multiline has-text-centered">
+        <div className="column is-half-mobile is-one-quarter-desktop">{order.name}</div>
+        <div className="column is-half-mobile is-one-quarter-desktop">{order.price.toFixed(2)}</div>
+        <div className="column is-half-mobile is-one-quarter-desktop">{order.customerName}</div>
+        <div className="column is-half-mobile is-one-quarter-desktop">{formatDate(order.processedAt)}</div>
       </div>
     </div>
   </animated.div>
 };
 
-function getButtonStyle(isMuted: boolean): CSSProperties {
+function getButtonStyle(): CSSProperties {
   return {
     borderRadius: '100%',
     minWidth: '60px',
@@ -92,7 +97,7 @@ function getButtonStyle(isMuted: boolean): CSSProperties {
     justifyContent: 'center',
     alignItems: 'center',
     cursor: 'pointer',
-    '-webkit-tap-highlight-color': 'transparent'
+    WebkitTapHighlightColor: 'transparent'
   }
 }
 
@@ -102,8 +107,15 @@ const DashboardPage: NextPage<DashboardPageProps> = ({ orders }) => {
   const [isMuted, setIsMuted] = React.useState(true);
   const [muteScale, setMuteScale] = React.useState(0);
   const [isMuteHover, setIsMuteHover] = React.useState(false);
+  const [_time, setTime] = React.useState(Date.now());
 
-  const socketInitializer = async () => {
+  function ringBell() {
+    const audio = document.getElementById('bell') as HTMLMediaElement;
+
+    audio.play();
+  }
+
+  useEffect(() => { 
     const pusher = new Pusher(
       process.env.NEXT_PUBLIC_PUSHER_APP_KEY as string,
       { cluster: process.env.NEXT_PUBLIC_PUSHER_APP_CLUSTER }
@@ -120,20 +132,13 @@ const DashboardPage: NextPage<DashboardPageProps> = ({ orders }) => {
       setOrdersState((currentOrdersState) => limitOrderCount([newOrder, ...currentOrdersState]));
       setRuntimeOrderIds((currentIds) => [newOrder.id, ...currentIds]);
 
-      ringBell();
+      if(!newOrder.isTest) {
+        ringBell();
+      }
     });
-  }
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => {socketInitializer()}, []);
-
-  function ringBell() {
-    const audio = document.getElementById('bell') as HTMLMediaElement;
-
-    audio.play();
-  }
-
-  const [time, setTime] = React.useState(Date.now());
+    return () => { pusher.disconnect() };
+   }, []);
 
   useEffect(() => {
     const interval = setInterval(() => setTime(Date.now()), 1000);
@@ -143,7 +148,7 @@ const DashboardPage: NextPage<DashboardPageProps> = ({ orders }) => {
     };
   }, []);
 
-  const propFoo = useSpring({
+  const propsMuteSpring = useSpring({
     transform: `scale(1.${muteScale})`,
     backgroundColor: isMuted ? 'hsl(0, 100%, 75%)' : 'hsl(0, 0%, 100%)',
     config: config.wobbly
@@ -157,7 +162,7 @@ const DashboardPage: NextPage<DashboardPageProps> = ({ orders }) => {
         muted={isMuted}
       />
       <animated.button
-        style={{...getButtonStyle(isMuted), ...propFoo}}
+        style={{...getButtonStyle(), ...propsMuteSpring}}
         onClick={() => setIsMuted(!isMuted)}
         onMouseEnter={() => {setMuteScale(1); setIsMuteHover(true);}}
         onMouseLeave={() => {setMuteScale(0); setIsMuteHover(false);}}
@@ -230,7 +235,7 @@ async function getOrderData(): Promise<Array<Order>> {
   );
   const responseData: OrderResponse = await client.query({
     data: `{
-      orders(first: ${ORDER_LIMIT}, reverse: true) {
+      orders(first: ${ORDER_LIMIT}, reverse: true, query: "-status:cancelled") {
         edges {
           node {
             id
